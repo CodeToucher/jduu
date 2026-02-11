@@ -105,6 +105,7 @@ fun TimetableScreen(
             }
         }
     }
+    }
 }
 
 @Composable
