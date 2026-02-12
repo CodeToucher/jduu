@@ -115,7 +115,8 @@ fun MapScreen(
                     
                     // Convert drawable to bitmap for OSM
                     // We can reuse the BitmapHelper logic but need to return Drawable
-                    marker.icon = getColoredDrawable(context, R.drawable.ic_navigation, color.toArgb())
+                    val iconRes = if (vehicle.transportType == "Troleibusai") R.drawable.ic_trolley else R.drawable.ic_bus
+                    marker.icon = getColoredDrawable(context, iconRes, color.toArgb())
                     
                     // Anchor center
                     marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)

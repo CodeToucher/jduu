@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,20 +44,26 @@ fun TimetableScreen(
     val routes by viewModel.routes.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
 
+    var showSettings by remember { mutableStateOf(false) }
+    val isWifiOnly by viewModel.isWifiOnly.collectAsState()
+    val isUpdating by viewModel.isUpdating.collectAsState()
+    val lastUpdate by viewModel.lastUpdateTime.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Timetables") },
                 actions = {
-                    IconButton(onClick = { viewModel.refreshData() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 }
             )
         }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-            // Search Bar
+            // ... Search Bar and List content is same (lines 58-107) ...
+             // Search Bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
@@ -77,8 +84,13 @@ fun TimetableScreen(
                          Text("No routes found")
                     } else {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
-                            Text("Loading routes...", modifier = Modifier.padding(top = 16.dp))
+                            if (isUpdating) {
+                                CircularProgressIndicator()
+                                Text("Updating database...", modifier = Modifier.padding(top = 16.dp))
+                            } else {
+                                CircularProgressIndicator()
+                                Text("Loading routes...", modifier = Modifier.padding(top = 16.dp))
+                            }
                         }
                     }
                 }
@@ -106,6 +118,45 @@ fun TimetableScreen(
             }
         }
     }
+    }
+
+    if (showSettings) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showSettings = false },
+            title = { Text("Data Settings") },
+            text = {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clickable { viewModel.toggleWifiOnly(!isWifiOnly) }
+                    ) {
+                        androidx.compose.material3.Checkbox(checked = isWifiOnly, onCheckedChange = { viewModel.toggleWifiOnly(it) })
+                        Text("Update on Wi-Fi only")
+                    }
+                    
+                    androidx.compose.material3.Button(
+                        onClick = { viewModel.updateData(force = true); showSettings = false },
+                        enabled = !isUpdating,
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                    ) {
+                        Text(if (isUpdating) "Updating..." else "Update Database Now")
+                    }
+                    
+                    if (lastUpdate > 0) {
+                        Text(
+                            "Last updated: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(java.util.Date(lastUpdate))}",
+                            style = MaterialTheme.typography.caption,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { showSettings = false }) {
+                    Text("Close")
+                }
+            }
+        )
     }
 }
 

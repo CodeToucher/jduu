@@ -53,9 +53,44 @@ class TimetableViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
     
-    fun refreshData() {
+    // Preferences
+    private val prefs = application.getSharedPreferences("judu_prefs", android.content.Context.MODE_PRIVATE)
+    private val _isWifiOnly = MutableStateFlow(prefs.getBoolean("wifi_only", true))
+    val isWifiOnly: StateFlow<Boolean> = _isWifiOnly
+
+    private val _lastUpdateTime = MutableStateFlow(prefs.getLong("last_update_time", 0))
+    val lastUpdateTime: StateFlow<Long> = _lastUpdateTime
+
+    private val _isUpdating = MutableStateFlow(false)
+    val isUpdating: StateFlow<Boolean> = _isUpdating
+
+    fun toggleWifiOnly(enabled: Boolean) {
+        _isWifiOnly.value = enabled
+        prefs.edit().putBoolean("wifi_only", enabled).apply()
+    }
+
+    fun updateData(force: Boolean = false) {
         viewModelScope.launch {
-            gtfsRepository.updateGtfsData()
+            if (_isUpdating.value) return@launch
+            
+            // Check Wifi if needed
+            if (!force && _isWifiOnly.value) {
+                // Todo: check network connectivity manager. For now assume yes or let user force it.
+            }
+
+            _isUpdating.value = true
+            try {
+                gtfsRepository.updateGtfsData()
+                val now = System.currentTimeMillis()
+                _lastUpdateTime.value = now
+                prefs.edit().putLong("last_update_time", now).apply()
+            } finally {
+                _isUpdating.value = false
+            }
         }
+    }
+    
+    fun refreshData() {
+       updateData(force = true)
     }
 }

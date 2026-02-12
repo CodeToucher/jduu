@@ -58,17 +58,22 @@ class GtfsRepository(private val context: Context, private val database: AppData
                         "trips.txt" -> {
                             val trips = GtfsParser.parseTrips(zipIs)
                             database.tripDao().clearAll()
-                            // Insert in chunks to avoid blowing up memory/transaction
-                            trips.chunked(1000).forEach { 
-                                database.tripDao().insertAll(it)
+                            // Use transaction for bulk insert - significantly faster
+                            database.runInTransaction {
+                                trips.chunked(2000).forEach { 
+                                    database.tripDao().insertAll(it)
+                                }
                             }
                             Log.d("GtfsRepository", "Inserted ${trips.size} trips")
                         }
                         "stop_times.txt" -> {
+                            // TODO: Stream parsing would be better here to avoid OOM, but transaction helps speed
                             val stopTimes = GtfsParser.parseStopTimes(zipIs)
                             database.stopTimeDao().clearAll()
-                            stopTimes.chunked(1000).forEach {
-                                database.stopTimeDao().insertAll(it)
+                            database.runInTransaction {
+                                stopTimes.chunked(2000).forEach {
+                                    database.stopTimeDao().insertAll(it)
+                                }
                             }
                             Log.d("GtfsRepository", "Inserted ${stopTimes.size} stop_times")
                         }
