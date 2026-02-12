@@ -20,17 +20,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun tripDao(): TripDao
     abstract fun stopTimeDao(): StopTimeDao
 
-    fun <T> runInTransaction(block: () -> T): T {
-        beginTransaction()
-        try {
-            val result = block()
-            setTransactionSuccessful()
-            return result
-        } finally {
-            endTransaction()
-        }
-    }
-
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null

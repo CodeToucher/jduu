@@ -2,6 +2,7 @@ package com.judu.transport.data.repository
 
 import android.content.Context
 import android.util.Log
+import androidx.room.withTransaction
 import com.judu.transport.data.db.AppDatabase
 import com.judu.transport.data.gtfs.GtfsParser
 import kotlinx.coroutines.Dispatchers
@@ -59,7 +60,7 @@ class GtfsRepository(private val context: Context, private val database: AppData
                             val trips = GtfsParser.parseTrips(zipIs)
                             database.tripDao().clearAll()
                             // Use transaction for bulk insert - significantly faster
-                            database.runInTransaction {
+                            database.withTransaction {
                                 trips.chunked(2000).forEach { 
                                     database.tripDao().insertAll(it)
                                 }
@@ -70,7 +71,7 @@ class GtfsRepository(private val context: Context, private val database: AppData
                             // TODO: Stream parsing would be better here to avoid OOM, but transaction helps speed
                             val stopTimes = GtfsParser.parseStopTimes(zipIs)
                             database.stopTimeDao().clearAll()
-                            database.runInTransaction {
+                            database.withTransaction {
                                 stopTimes.chunked(2000).forEach {
                                     database.stopTimeDao().insertAll(it)
                                 }
