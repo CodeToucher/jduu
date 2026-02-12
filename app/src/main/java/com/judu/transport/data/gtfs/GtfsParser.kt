@@ -89,9 +89,16 @@ object GtfsParser {
     }
 
     fun parseStopTimes(inputStream: InputStream): List<StopTime> {
-        val stopTimes = mutableListOf<StopTime>()
+        val list = mutableListOf<StopTime>()
+        parseStopTimesStream(inputStream) { list.addAll(it) }
+        return list
+    }
+
+    fun parseStopTimesStream(inputStream: InputStream, onBatch: (List<StopTime>) -> Unit) {
         val reader = BufferedReader(InputStreamReader(inputStream))
         var header: Map<String, Int>? = null
+        val batch = mutableListOf<StopTime>()
+        val batchSize = 5000
 
         reader.forEachLine { line ->
             val parts = line.split(",") 
@@ -105,11 +112,43 @@ object GtfsParser {
                     val arrival = parts.getOrNull(header!!["arrival_time"] ?: -1)
                     val departure = parts.getOrNull(header!!["departure_time"] ?: -1)
 
-                    stopTimes.add(StopTime(tripId, stopId, sequence, arrival, departure))
-                } catch (e: Exception) {
-                }
+                    batch.add(StopTime(tripId, stopId, sequence, arrival, departure))
+                    if (batch.size >= batchSize) {
+                        onBatch(batch.toList())
+                        batch.clear()
+                    }
+                } catch (e: Exception) {}
             }
         }
-        return stopTimes
+        if (batch.isNotEmpty()) onBatch(batch)
+    }
+
+    fun parseTripsStream(inputStream: InputStream, onBatch: (List<Trip>) -> Unit) {
+        val reader = BufferedReader(InputStreamReader(inputStream))
+        var header: Map<String, Int>? = null
+        val batch = mutableListOf<Trip>()
+        val batchSize = 5000
+
+        reader.forEachLine { line ->
+            val parts = line.split(",") 
+            if (header == null) {
+                header = parts.mapIndexed { index, name -> name to index }.toMap()
+            } else {
+                try {
+                    val tripId = parts[header!!["trip_id"]!!]
+                    val routeId = parts[header!!["route_id"]!!]
+                    val serviceId = parts[header!!["service_id"]!!]
+                    val headsign = parts.getOrNull(header!!["trip_headsign"] ?: -1)
+                    val directionId = parts.getOrNull(header!!["direction_id"] ?: -1)?.toIntOrNull()
+
+                    batch.add(Trip(tripId, routeId, serviceId, headsign, directionId))
+                    if (batch.size >= batchSize) {
+                        onBatch(batch.toList())
+                        batch.clear()
+                    }
+                } catch (e: Exception) {}
+            }
+        }
+        if (batch.isNotEmpty()) onBatch(batch)
     }
 }

@@ -57,26 +57,22 @@ class GtfsRepository(private val context: Context, private val database: AppData
                             Log.d("GtfsRepository", "Inserted ${routes.size} routes")
                         }
                         "trips.txt" -> {
-                            val trips = GtfsParser.parseTrips(zipIs)
                             database.tripDao().clearAll()
-                            // Use transaction for bulk insert - significantly faster
                             database.withTransaction {
-                                trips.chunked(2000).forEach { 
-                                    database.tripDao().insertAll(it)
+                                GtfsParser.parseTripsStream(zipIs) { batch ->
+                                    database.tripDao().insertAll(batch)
                                 }
                             }
-                            Log.d("GtfsRepository", "Inserted ${trips.size} trips")
+                            Log.d("GtfsRepository", "Finished inserting trips")
                         }
                         "stop_times.txt" -> {
-                            // TODO: Stream parsing would be better here to avoid OOM, but transaction helps speed
-                            val stopTimes = GtfsParser.parseStopTimes(zipIs)
                             database.stopTimeDao().clearAll()
                             database.withTransaction {
-                                stopTimes.chunked(2000).forEach {
-                                    database.stopTimeDao().insertAll(it)
+                                GtfsParser.parseStopTimesStream(zipIs) { batch ->
+                                    database.stopTimeDao().insertAll(batch)
                                 }
                             }
-                            Log.d("GtfsRepository", "Inserted ${stopTimes.size} stop_times")
+                            Log.d("GtfsRepository", "Finished inserting stop_times")
                         }
                     }
                     zipIs.closeEntry()
